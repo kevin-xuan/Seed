@@ -32,7 +32,7 @@ python data_process.py
 To train our model on the Porto dataset:
 
 ```
-python train.py --dataset porto --use_pre --use_emb --pre_epochs 50 --diff_inc 3 --pretrained_emb node2vec/emb/porto_weighted.emb --device cuda:0 --channel_size 256 --batch_size 4096
+python train.py --dataset porto --use_pre --use_emb --pre_epochs 50 --diff_inc 3 --pretrained_emb emb/porto_weighted.emb --device cuda:0 --channel_size 256 --batch_size 4096
 ```
 
 
