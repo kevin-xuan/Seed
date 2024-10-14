@@ -29,7 +29,7 @@ parser.add_argument('--pre_epochs', type=int, default=50)  # The epoch number of
 parser.add_argument('--diff_inc', type=int, default=3)  # The diffuculty level increase of each epoch when pre-training
 parser.add_argument('--test_epoch', type=int, default=10)  # The epoch number of every test 
 parser.add_argument('--pre2_epochs', type=int, default=0) 
-parser.add_argument('--pretrained_emb', type=str, default='./node2vec/emb/porto_weighted.emb')
+parser.add_argument('--pretrained_emb', type=str, default='./emb/porto_weighted.emb')
 
 
 parser.add_argument('--gcn', action='store_true', default=False)
