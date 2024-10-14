@@ -1,0 +1,54 @@
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--data_dir', type=str, default='./data')
+parser.add_argument('--channel_size', type=int, default=256)
+parser.add_argument('--lr', type=float, default=1e-4)
+parser.add_argument('--weight_decay', type=float, default=0)
+parser.add_argument('--epochs', type=int, default=1000)  # The number of training epochs
+parser.add_argument('--batch_size', type=int, default=4096)
+parser.add_argument('--dataset', type=str, default='porto') 
+parser.add_argument('--device', type=str, default='cuda:0')
+parser.add_argument('--plot_num', type=int, default=300)
+parser.add_argument('--n_steps', type=int, default=500)
+parser.add_argument('--max_len', type=int, default=20)
+parser.add_argument('--grid_num', type=int, default=128)
+parser.add_argument('--skip', type=int, default=5)
+parser.add_argument('--grid_size', type=float, default=0.1)
+parser.add_argument('--filename', type=str, default='./node2vec/graph/porto.edgelist')
+parser.add_argument('--pred', type=str, default='proj', choices=['proj', 'mse', 'cosine', 'mul', 'score'])
+parser.add_argument('--schedule', type=str, default='linear', choices=['linear', 'quad', 'sigmoid'])
+parser.add_argument('--early_stop', type=int, default=5)
+
+parser.add_argument('--weighted', action='store_true', default=True)
+parser.add_argument('--use_pre', action='store_true', default=True)
+parser.add_argument('--use_emb', action='store_true', default=True)
+parser.add_argument('--use_cond', action='store_true', default=False)
+parser.add_argument('--use_attr', action='store_true', default=False)
+parser.add_argument('--pre_epochs', type=int, default=50)  # The epoch number of curriculum learning  
+parser.add_argument('--diff_inc', type=int, default=3)  # The diffuculty level increase of each epoch when pre-training
+parser.add_argument('--test_epoch', type=int, default=10)  # The epoch number of every test 
+parser.add_argument('--pre2_epochs', type=int, default=0) 
+parser.add_argument('--pretrained_emb', type=str, default='./node2vec/emb/porto_weighted.emb')
+
+
+parser.add_argument('--gcn', action='store_true', default=False)
+parser.add_argument('--static', action='store_true', default=False)
+parser.add_argument('--anchor', action='store_true', default=False)
+parser.add_argument('--anchor_num', default=500, type=int, help="number of anchor node")  
+parser.add_argument('--num_blocks', default=2, type=int, help="number of layers in transformer")  
+parser.add_argument('--num_heads', default=2, type=int, help="number of heads in transformer")  
+parser.add_argument('--layer_num', default=3, type=int, help="number of GCN layers")
+parser.add_argument('--mask_ratio', default=0.25, type=float, help="mask ratio")  
+parser.add_argument('--tra_kl_reg', default=1.0, type=float, help="kl_reg of frequency transition prior")
+parser.add_argument('--tra_delta', default=0., type=float, help="mask threshold for adaptive frequency transition graph")
+
+parser.add_argument("--mask_p", type=float, default=0.1, help="mask probability")
+# parser.add_argument("--aap_weight", type=float, default=0.2, help="aap loss weight")
+parser.add_argument("--mip_weight", type=float, default=1.0, help="mip loss weight")
+# parser.add_argument("--map_weight", type=float, default=1.0, help="map loss weight")
+parser.add_argument("--msp_weight", type=float, default=0.0, help="msp loss weight")  # 0.5
+parser.add_argument("--nmp_weight", type=float, default=1.0, help="nmp loss weight")  
+
+
+args = parser.parse_args()
