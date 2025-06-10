@@ -7,6 +7,7 @@ import geopandas as gpd
 from config import args
 import datetime
 from models.DDIM import DDIM
+from evaluation import IndividualEval
 import pandas as pd
 import shutil
 from logger import Logger, log_info
@@ -84,7 +85,10 @@ if __name__ == '__main__':
     shutil.copy2('config.py', os.path.join(log_dir, timestamp))
     log_info(args, logger)
     
-    segment_graph = construct_segment_graph(edges)
+    # evaluation
+    individualEval = IndividualEval(data_path, args.max_len, boundary, grid_num, grid_size, args.filename, args.weighted)
+    # segment_graph = construct_segment_graph(edges)
+    segment_graph = individualEval.segment_graph
     ddim = DDIM(args, segment_graph)
     
     params = print_model(ddim.model, logger)
@@ -196,4 +200,21 @@ if __name__ == '__main__':
                     fout.write('%s\n' % string)   
                
             logger.info('generating {} trajectories but only {} unique trajectories, needs {}s'.format(len(gen_trajs), len(np.unique(gen_trajs, axis=0)), time.time() - gene_s))
+            diversity = len(np.unique(gen_trajs, axis=0)) / len(gen_trajs)
+            
+            logger.info(f'generating trajectories finished! start evaluating...')       
+            JSDs = individualEval.get_individual_jsds(test_trajs+1, gen_trajs)
+            distance_jsd, radius_jsd, location_jsd, number_density_jsd, size_density_jsd, p_od_flow_jsd, gravity_flow_jsd, g_rank_jsd, i_rank_jsd, con_perc, partial_con_perc = JSDs
+            eval_end = time.time()
+            
+            logger.info('\nTest epoch:%d, Time: %.2fs, Distance: %.4f, Radius: %.4f, Location: %.4f, NDensity: %.4f, SDensity: %.4f, ODFlow: %.4f, Gravity: %.4f, G_rank: %.4f, I_rank: %.4f, Connectivity: %.4f, Partial Connectivity: %.4f, Diversity: %.4f'
+                  % (epoch+1, eval_end-eval_start, distance_jsd, radius_jsd, location_jsd, number_density_jsd, size_density_jsd,  p_od_flow_jsd, gravity_flow_jsd, g_rank_jsd, i_rank_jsd, con_perc, partial_con_perc, diversity))
+            if con_perc > best_conn:
+                best_conn = con_perc
+                stop = 0
+            else:
+                stop += 1
+                if stop >= args.early_stop:
+                    logger.info(f'Early stopping at epoch {epoch+1}')
+                    break
                    

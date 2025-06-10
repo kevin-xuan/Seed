@@ -1,8 +1,14 @@
-# Seed
+# Seed [WWW 2025]
 
 This is the implementation for the paper: “Seed: Bridging Sequence and Diffusion Models for Road Trajectory Generation.” 
 
 ## Preliminaries
+
+### Data Preparation
+```bash
+  unzip data.zip 
+  unzip emb.zip
+  ```
 
 ### Conda Environment
 
@@ -10,32 +16,33 @@ This is the implementation for the paper: “Seed: Bridging Sequence and Diffusi
   conda env create -f environment.yml
   ```
 
-### Requirements
-* Python 3.11.4 
-* pytorch 2.1.1 
-* pandas 2.0.3 
-* numpy 1.24.3
-
-<!-- ## Datasets
-
-We use [SIN, NYC](https://sites.google.com/site/yangdingqi/home) and [Gowalla](http://snap.stanford.edu/data/loc-gowalla.html) datasets. The processed SIN and Gowalla datasets are from [ARGAN](https://github.com/wangzb11/AGRAN), and we preprocess NYC dataset by **data_process.py**. For more details of data preprocessing, please refer to our paper or **data_process.py**:
-
-```
-python data_process.py
-``` -->
-
-
-
-
 ## Model Training
 
-To train our model on the Porto dataset:
+To train our model on the Porto dataset (See scripts/run.sh):
 
 ```
-python train.py --dataset porto --use_pre --use_emb --pre_epochs 50 --diff_inc 3 --pretrained_emb emb/porto_weighted.emb --device cuda:0 --channel_size 256 --batch_size 4096
+python train.py --dataset porto --use_pre --use_emb --pre_epochs 50 --diff_inc 3 --pretrained_emb emb/porto_weighted.emb --filename ./node2vec/graph/porto.edgelist --device cuda:0 --channel_size 256 --batch_size 4096
 ```
 
 
-<!-- ## Acknowledgement
+## Acknowledgement
 
-The code is implemented based on [ARGAN](https://github.com/wangzb11/AGRAN). -->
+The code is implemented based on [DiffTraj](https://github.com/Yasoz/DiffTraj).
+
+## Citing
+
+If you use Seed in your research, please cite the following [paper](https://dl.acm.org/doi/10.1145/3696410.3714951):
+```
+@inproceedings{DBLP:conf/www/RaoSJ0025,
+  author       = {Xuan Rao and
+                  Shuo Shang and
+                  Renhe Jiang and
+                  Peng Han and
+                  Lisi Chen},
+  title        = {Seed: Bridging Sequence and Diffusion Models for Road Trajectory Generation},
+  booktitle    = {Proceedings of the {ACM} on Web Conference 2025, {WWW} 2025, Sydney,
+                  NSW, Australia, 28 April 2025- 2 May 2025},
+  pages        = {2007--2017},
+  year         = {2025}
+}
+```
