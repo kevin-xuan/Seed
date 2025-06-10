@@ -129,7 +129,7 @@ if __name__ == '__main__':
                 
             for i, batch in pretrain_data_iter:
                 batch = batch.to(device)
-                nmp_loss, cross_loss_nmp, mse_loss_nmp, mse_loss2_nmp = ddim.pretrain_mask2(ddim.model, batch, alphas_bar_sqrt, one_minus_alphas_bar_sqrt, level)
+                nmp_loss, cross_loss_nmp, mse_loss_nmp, mse_loss2_nmp = ddim.pretrain(ddim.model, batch, alphas_bar_sqrt, one_minus_alphas_bar_sqrt, level)
 
                 loss = nmp_loss
 

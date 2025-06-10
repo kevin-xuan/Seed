@@ -14,7 +14,6 @@ def readEmbedFile(embedFile):
     embeddings = []
     for lineId in range(1, len(lines)): 
         splits = lines[lineId].split(' ')
-        # embedId赋值
         embedId = int(splits[0])
         embedValue = splits[1:]
         new_embedValue = [float(x) for x in embedValue]
@@ -132,15 +131,15 @@ class Model(nn.Module):
 
     def __init__(self, args, rid_gps=None):
         super().__init__()
-        ch = args.channel_size  # 128
+        ch = args.channel_size  
         self.dev = args.device
         
         # attention
         self.dropout = 0.0
-        self.num_blocks = args.num_blocks               # default: 2
-        self.num_heads = args.num_heads                 # default: 2
+        self.num_blocks = args.num_blocks               
+        self.num_heads = args.num_heads                 
 
-        self.ch = ch  # 128
+        self.ch = ch  
         self.use_attr = args.use_attr
         self.condition = args.use_cond
         self.pred = args.pred
@@ -161,7 +160,7 @@ class Model(nn.Module):
         else:
             self.segment_embedding = nn.Embedding(self.segment_num+1, self.ch)
         self.ch = self.input_dim
-        self.temb_ch = self.ch * 4  # 512
+        self.temb_ch = self.ch * 4  
     
         # timestep embedding
         self.temb = nn.Module()
@@ -169,7 +168,7 @@ class Model(nn.Module):
             torch.nn.Linear(self.ch, self.temb_ch),
             torch.nn.Linear(self.temb_ch, self.temb_ch),
             torch.nn.Linear(self.temb_ch, self.ch)
-        ])  # (128, 512) & (512, 512) & (512, 128)
+        ])  
         if not self.use_rope:
             self.abs_pos_K_emb = torch.nn.Embedding(args.max_len, self.ch)
             self.abs_pos_V_emb = torch.nn.Embedding(args.max_len, self.ch)
@@ -181,7 +180,7 @@ class Model(nn.Module):
 
         self.last_layernorm = nn.LayerNorm(self.ch, eps=1e-8)
 
-        for _ in range(self.num_blocks):  # 2
+        for _ in range(self.num_blocks):  
             new_attn_layernorm = nn.LayerNorm(self.ch, eps=1e-8)
             self.attention_layernorms.append(new_attn_layernorm)
             
@@ -194,14 +193,11 @@ class Model(nn.Module):
             new_fwd_layer = PointWiseFeedForward(self.ch, self.dropout)
             self.forward_layers.append(new_fwd_layer)
             
-        if self.condition:
-            self.decoder = nn.Linear(self.ch * 3, self.ch)  # default: start, end, feats, noise_label
-        else:
-            self.decoder = nn.Linear(self.ch * 2, self.ch)
+        self.decoder = nn.Linear(self.ch * 2, self.ch)
         if self.pred == 'proj':
-            self.proj = nn.Linear(self.ch, self.segment_num)   # for vector score
+            self.proj = nn.Linear(self.ch, self.segment_num)   
         elif self.pred == 'score':
-            self.proj = nn.Linear(self.ch * 2, 1)   # for vector score
+            self.proj = nn.Linear(self.ch * 2, 1)   
 
     def gcn_embeddings(self, tra_matrix, anchor_idx=None):
         item_embs, support = self.gcn(self.segment_embedding, tra_matrix, anchor_idx) 
@@ -238,18 +234,17 @@ class Model(nn.Module):
     def get_diffusion_input(self, seqs_nxt, t, extra_embed=None):
 
         # timestep embedding
-        temb = get_timestep_embedding(t, self.ch)           # (B, 128)
+        temb = get_timestep_embedding(t, self.ch)          
         temb = self.temb.dense[0](temb)
         temb = nonlinearity(temb)
-        temb = self.temb.dense[1](temb)                     # (B, 512)
+        temb = self.temb.dense[1](temb)                    
         if extra_embed is not None:
             temb = temb + extra_embed
         temb = nonlinearity(temb)
-        temb = self.temb.dense[2](temb)                     # (B, 128)
+        temb = self.temb.dense[2](temb)                     
         if seqs_nxt.ndim >= 3:
             temb = temb.unsqueeze(1) 
         seqs_nxt = seqs_nxt + temb
-        
         
         return seqs_nxt
     
@@ -261,54 +256,46 @@ class Model(nn.Module):
     
     def forward(self, log_seqs, seqs_nxt, t, extra_embed=None, mode='training', gps=None):
         
-        log_feats = self.encode(log_seqs, mode, gps)           # regarded as condition for diffusion model
+        log_feats = self.encode(log_seqs, mode, gps)                                        # regarded as condition for diffusion model
         
         return log_feats, self.step(log_feats, seqs_nxt, t, extra_embed)
     
     def step(self, log_feats, seqs_nxt, t, extra_embed=None):
         
-        x_t = self.get_diffusion_input(seqs_nxt, t)                            # (B, T, 128) or (B, 128)
-        
-        if self.condition:
-            if x_t.ndim >=3:
-                extra_embed = extra_embed.unsqueeze(1)                         # (B, 128*2) -> (B, 1, 128*2)
-                extra_embed = extra_embed.expand(-1, x_t.shape[1], -1)         # (B, T, 128*2)
-            fin_logits = self.decoder(torch.cat([extra_embed, log_feats, x_t], dim=-1))     # (B, 128*4)
-        else:
-            fin_logits = self.decoder(torch.cat([log_feats, x_t], dim=-1))     # (B, 128)
+        x_t = self.get_diffusion_input(seqs_nxt, t)                           
+        fin_logits = self.decoder(torch.cat([log_feats, x_t], dim=-1))     
             
         return fin_logits
     
     def sample(self, x_recover, log_feats, log_seqs=None, mask=None, train=False):
         if self.pred == 'mse':
             batch = x_recover.shape[0]
-            x_recover = x_recover.reshape(-1, 1, self.ch)                    # [B*T, 1, D] or [B, 1, D] 
-            logits = -torch.mean(torch.sqrt(torch.square(x_recover - self.segment_embedding.weight[1:-1].unsqueeze(0))), dim=-1)                                                          # [B, N, D] -> [B, N]
+            x_recover = x_recover.reshape(-1, 1, self.ch)                    
+            logits = -torch.mean(torch.sqrt(torch.square(x_recover - self.segment_embedding.weight[1:-1].unsqueeze(0))), dim=-1)                                                         
             logits = logits.reshape(batch, -1, self.segment_num).squeeze()   
             logits = torch.sigmoid(logits)          
         elif self.pred == 'cosine':    
             batch = x_recover.shape[0]
-            x_recover = x_recover.reshape(-1, 1, self.ch)                    # [B*T, 1, D] or [B, 1, D]        
-            logits = torch.cosine_similarity(x_recover, self.segment_embedding.weight[1:-1].unsqueeze(0), dim=-1)                                                          # [B, N]  
+            x_recover = x_recover.reshape(-1, 1, self.ch)                     
+            logits = torch.cosine_similarity(x_recover, self.segment_embedding.weight[1:-1].unsqueeze(0), dim=-1)                                                          
             logits = logits.reshape(batch, -1, self.segment_num).squeeze()     
             logits = torch.sigmoid(logits)             
         elif self.pred == 'mul':
             logits = torch.sigmoid(x_recover.matmul(self.segment_embedding.weight[1:-1, :].transpose(0,1)))
         elif self.pred == 'score':
             batch = x_recover.shape[0]
-            x_recover = x_recover.reshape(-1, 1, self.ch).repeat(1, self.segment_num, 1)                                         # [B*T, N, D] or [B, N, D]
-            item_emb = self.segment_embedding.weight[1:-1, :].unsqueeze(0).repeat(x_recover.shape[0], 1, 1)                          # [B, N, D]
-            logits = torch.sigmoid(self.proj(torch.cat([x_recover, item_emb], dim=-1)))                    # [B, N, 1]
+            x_recover = x_recover.reshape(-1, 1, self.ch).repeat(1, self.segment_num, 1)                                         
+            item_emb = self.segment_embedding.weight[1:-1, :].unsqueeze(0).repeat(x_recover.shape[0], 1, 1)                          
+            logits = torch.sigmoid(self.proj(torch.cat([x_recover, item_emb], dim=-1)))                    
             logits = logits.reshape(batch, -1, self.segment_num).squeeze()
         else:
-            # vector score
             logits =torch.sigmoid(self.proj(x_recover))  
         
         if mask is not None:
-            bias = mask[log_seqs, :].to(self.dev)                                                   # [B, T, N]     
+            bias = mask[log_seqs, :].to(self.dev)                                                   
             if not train:
-                logits = logits + bias[:, -1, :][:,1:]                                                                                  # [B, N]
+                logits = logits + bias[:, -1, :][:,1:]                                                                                  
             else:
-                logits = logits + bias[..., 1:]                                                                                         # [B, T, N]
+                logits = logits + bias[..., 1:]                                                                                         
         
         return logits        

@@ -47,26 +47,26 @@ class DDIM:
         batch_size, seq_len = x_0.shape[0], x_0.shape[1]
 
         # Select a random step for each example
-        t = torch.randint(low=0, high=n_steps, size=(batch_size // 2 + 1,), device=self.device)  # [low, high)
+        t = torch.randint(low=0, high=n_steps, size=(batch_size // 2 + 1,), device=self.device)  
         t = torch.cat([t, n_steps - t - 1], dim=0)[:batch_size]
         
         # prepend start token
         start = torch.zeros((batch_size, 1), dtype=torch.int64).to(self.device)
-        log_seqs = torch.cat([start, x_0[:, :-1]+1], dim=-1)                                       # [B, T]
+        log_seqs = torch.cat([start, x_0[:, :-1]+1], dim=-1)                                       
         
-        x_0 = model.segment_embedding(x_0+1)                                                # (B, T) -> (B, T, C)
+        x_0 = model.segment_embedding(x_0+1)                                                
         log_seqs_emb = model.segment_embedding(log_seqs) 
         
-        mean = extract(alphas_bar_sqrt, t, x_0).to(self.device)                             # [B, 1, 1]
-        mean_ = mean.repeat(1, x_0.shape[1], 1)                                             # [B, T, 1]
+        mean = extract(alphas_bar_sqrt, t, x_0).to(self.device)                             
+        mean_ = mean.repeat(1, x_0.shape[1], 1)                                             
         
         mean = mean_ * x_0
-        var_sqrt = extract(one_minus_alphas_bar_sqrt, t, x_0).to(self.device)               # [B, 1, 1]
+        var_sqrt = extract(one_minus_alphas_bar_sqrt, t, x_0).to(self.device)               
         var_sqrt_ = var_sqrt.repeat(1, x_0.shape[1], 1)
         var_sqrt = var_sqrt_
 
         e = torch.randn_like(x_0)
-        x = mean + var_sqrt * e                 # x_t forward process
+        x = mean + var_sqrt * e                 
 
         log_feats, output = model(log_seqs_emb, x, t)                    
         pred_x_0 = (x - var_sqrt*output) / mean_ 
@@ -113,17 +113,17 @@ class DDIM:
         seq_next = [-1] + list(seq[:-1])
         
         # prepend start token
-        start = torch.zeros((batch, 1), dtype=torch.int64).to(self.device)                # [B, 1]
+        start = torch.zeros((batch, 1), dtype=torch.int64).to(self.device)                
         
-        x = torch.randn(new_shape).to(self.device)                                        # (B, T, 128)
+        x = torch.randn(new_shape).to(self.device)                                        
         n = x.shape[0]
         result = [start]
         segment_embs = model.segment_embedding.weight    
         
         for l in range(seq_len):
             ims = []
-            log_x = start  #* 已经加1
-            log_x = log_x.long().to(self.device)                                   # (B, T) -> (B, T, C)
+            log_x = start  
+            log_x = log_x.long().to(self.device)                                   
             log_seqs_emb = segment_embs[log_x, :]
             state = model.encode(log_seqs_emb)[:, -1]
             x_ = x[:, l]
@@ -135,15 +135,15 @@ class DDIM:
                     pred_noise = model.step(state, x_, t)
                     x_ = self.p_xt(x_, pred_noise, t, next_t, beta, eta)
                     ims.append(x_)
-            pred = model.sample(ims[-1], state, log_x, self.mask)                      # [B, N]
-            _, indices = torch.topk(pred, 1, dim=-1)                                   # [B, 1]
+            pred = model.sample(ims[-1], state, log_x, self.mask)                      
+            _, indices = torch.topk(pred, 1, dim=-1)                                   
             result.append(indices+1)
             start = torch.cat(result, dim=-1)
             
         return torch.cat(result, dim=-1)[:, 1:]
     
-    def pretrain_mask2(self, model, pos_items, alphas_bar_sqrt, one_minus_alphas_bar_sqrt, level):
-        label = pos_items - 1       #* 已经加1
+    def pretrain(self, model, pos_items, alphas_bar_sqrt, one_minus_alphas_bar_sqrt, level):
+        label = pos_items - 1       
         batch_size = pos_items.shape[0]
         seq_len = pos_items.shape[1]
         t = torch.ones((batch_size,), device=self.device, dtype=torch.int64) * level
@@ -154,15 +154,15 @@ class DDIM:
         pos_items_emb = model.segment_embedding(pos_items)
         log_seqs_emb = model.segment_embedding(log_seqs)
         
-        mean = extract(alphas_bar_sqrt, t, pos_items_emb).to(self.device)                             # [B, 1, 1]
-        mean_ = mean.repeat(1, pos_items_emb.shape[1], 1)                                             # [B, T, 1]
+        mean = extract(alphas_bar_sqrt, t, pos_items_emb).to(self.device)                             
+        mean_ = mean.repeat(1, pos_items_emb.shape[1], 1)                                             
         mean = mean_ * pos_items_emb
-        var_sqrt = extract(one_minus_alphas_bar_sqrt, t, pos_items_emb).to(self.device)               # [B, 1, 1]
+        var_sqrt = extract(one_minus_alphas_bar_sqrt, t, pos_items_emb).to(self.device)               
         var_sqrt_ = var_sqrt.repeat(1, pos_items_emb.shape[1], 1)
         var_sqrt = var_sqrt_
         
         e = torch.randn_like(pos_items_emb)
-        x = mean + var_sqrt * e                 # x_t forward process
+        x = mean + var_sqrt * e                 
 
         # Next Movement Prediction
         log_feats, output = model(log_seqs_emb, x, t)                    
